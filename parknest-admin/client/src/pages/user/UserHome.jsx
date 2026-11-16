@@ -3,18 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../context/UserContext';
 import { parkingService } from '../../services/api';
 import InteractiveMap from '../../components/InteractiveMap';
-import LiveSensorDemoTrigger from '../../components/LiveSensorDemoTrigger';
 import { distanceInKm, getCoordinates } from '../../utils/location';
 import {
-  ArrowUpDown, BookOpen, Calendar, Car, CheckCircle2,
-  ChevronRight, Compass, MapPin, Shield, Sparkles, Wrench
+  ArrowUpDown, ArrowUpRight, Calendar, CalendarCheck, Car, ChevronRight,
+  Compass, Home, MapPin, Sparkles, UserRound
 } from 'lucide-react';
 
 const DEMO_LOCATION = { latitude: 19.045, longitude: 72.889 };
 
 const UserHome = ({
-  slots = [], realSlot, realSensor, onTriggerComplete,
-  location, locationStatus = 'idle', onLocateMe, socketConnected, reservations = []
+  slots = [], location, locationStatus = 'idle', onLocateMe, reservations = []
 }) => {
   const { user, getDefaultVehicle } = useUser();
   const navigate = useNavigate();
@@ -64,66 +62,89 @@ const UserHome = ({
     reservation.userPhone?.replace(/\D/g, '') === phone &&
     new Date(reservation.endTime) > new Date()
   );
-  const services = [
-    { id: 'puc', title: 'PUC testing', description: 'Find nearby pollution testing centers.', icon: CheckCircle2, color: 'text-emerald-700 bg-emerald-50' },
-    { id: 'repair', title: 'Car repairs', description: 'Search for repair shops and mechanics.', icon: Wrench, color: 'text-amber-700 bg-amber-50' },
-    { id: 'rto', title: 'RTO offices', description: 'Find nearby RTO offices and services.', icon: Shield, color: 'text-violet-700 bg-violet-50' },
-    { id: 'guides', title: 'Fitting guides', description: 'Quick tips for common car accessories.', icon: BookOpen, color: 'text-blue-700 bg-blue-50' }
-  ];
+  const availableSlots = slots.filter((slot) => slot.status === 'AVAILABLE').length;
 
   return (
     <div className="space-y-6 pb-10">
-      <section className="grid gap-4 lg:grid-cols-3">
-        <div className="relative flex min-h-56 flex-col justify-between overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-br from-white via-white to-blue-50 p-5 shadow-sm sm:p-6 lg:col-span-2">
+      <section className="relative flex min-h-48 flex-col justify-center overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-br from-white via-white to-blue-50 p-5 shadow-sm sm:min-h-56 sm:p-8">
           <div className="pointer-events-none absolute -right-10 -top-20 h-64 w-64 rounded-full bg-blue-100/60 blur-3xl" />
           <div className="relative">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-[11px] font-semibold text-blue-700">
               <Sparkles size={13} className="text-blue-600" /> ParkNest Driver App
             </span>
-            <h1 className="mt-4 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Welcome, {user.name?.split(' ')[0] || 'Driver'}</h1>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">See nearby parking, understand live sensor readings, and reserve with your registered vehicle.</p>
+            <h1 className="mt-4 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Welcome, {user.name?.trim().split(/\s+/)[0] || 'Driver'}</h1>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">Your parking and mobility essentials, all in one place.</p>
           </div>
-          <div className="relative mt-5 flex flex-wrap gap-2">
-            <button type="button" onClick={() => navigate('/user/book')} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700">
-              <Calendar size={16} /> Book a parking slot
-            </button>
-            <button type="button" onClick={() => navigate('/user/services')} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50">Nearby services</button>
+      </section>
+
+      <section aria-label="Quick navigation" className="grid auto-rows-[minmax(116px,auto)] grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
+        <div className="col-span-2 flex min-h-32 flex-col justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:col-span-1 md:row-span-2 md:min-h-64">
+          <div className="flex items-start justify-between gap-2">
+            <span className="rounded-xl bg-slate-100 p-2.5 text-slate-600"><Home size={19} /></span>
+            <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-700">You’re here</span>
+          </div>
+          <div>
+            <h2 className="font-bold text-slate-900">Home</h2>
+            <p className="mt-1 text-xs leading-5 text-slate-500">Explore nearby parking and services from your dashboard.</p>
           </div>
         </div>
 
-        <article className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Registered vehicle</span>
-            {defaultVehicle && <span className="rounded-full bg-blue-50 px-2 py-1 text-[10px] font-bold text-blue-800">{defaultVehicle.type}</span>}
-          </div>
-          {defaultVehicle ? (
-            <div className="my-4 flex items-center gap-3">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-700"><Car size={27} /></div>
-              <div className="min-w-0">
-                <p className="break-all font-mono text-lg font-extrabold text-slate-900">{defaultVehicle.plate}</p>
-                <p className="text-xs text-slate-500">{defaultVehicle.model || 'Vehicle'}{defaultVehicle.color ? ` · ${defaultVehicle.color}` : ''}</p>
-              </div>
+        <button type="button" onClick={() => navigate('/user/book')} className="group relative col-span-2 flex min-h-36 flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 p-5 text-left text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg md:row-span-2 md:min-h-64">
+          <span aria-hidden="true" className="pointer-events-none absolute -bottom-16 -right-8 h-48 w-48 rounded-full border-[28px] border-white/10" />
+          <span className="flex items-start justify-between">
+            <span className="rounded-xl bg-white/15 p-2.5"><Calendar size={20} /></span>
+            <ArrowUpRight size={20} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+          </span>
+          <span className="relative">
+            <span className="block text-lg font-bold">Book parking</span>
+            <span className="mt-1 block text-xs text-blue-100">{availableSlots} available in nearby demo areas</span>
+          </span>
+        </button>
+
+        <button type="button" onClick={() => navigate('/user/reservations')} className="group flex min-h-32 flex-col justify-between rounded-2xl border border-blue-100 bg-blue-50/70 p-4 text-left transition hover:border-blue-300 hover:bg-blue-50">
+          <span className="flex items-start justify-between">
+            <span className="rounded-xl bg-white p-2.5 text-blue-700"><CalendarCheck size={19} /></span>
+            <ArrowUpRight size={17} className="text-slate-400 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+          </span>
+          <span><span className="block text-sm font-bold text-slate-900">Trips</span><span className="text-xs text-slate-500">{activeReservations.length} active reservations</span></span>
+        </button>
+
+        <button type="button" onClick={() => navigate('/user/services')} className="group flex min-h-32 flex-col justify-between rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4 text-left transition hover:border-emerald-300 hover:bg-emerald-50">
+          <span className="flex items-start justify-between">
+            <span className="rounded-xl bg-white p-2.5 text-emerald-700"><MapPin size={19} /></span>
+            <ArrowUpRight size={17} className="text-slate-400 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+          </span>
+          <span><span className="block text-sm font-bold text-slate-900">Services</span><span className="text-xs text-slate-500">PUC, repair, RTO & guides</span></span>
+        </button>
+
+        <button type="button" onClick={() => navigate('/user/profile')} className="group flex min-h-32 flex-col justify-between rounded-2xl border border-violet-100 bg-violet-50/70 p-4 text-left transition hover:border-violet-300 hover:bg-violet-50">
+          <span className="flex items-start justify-between">
+            <span className="rounded-xl bg-white p-2.5 text-violet-700"><UserRound size={19} /></span>
+            <ArrowUpRight size={17} className="text-slate-400 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+          </span>
+          <span><span className="block text-sm font-bold text-slate-900">Profile</span><span className="text-xs text-slate-500">{user.vehicles.length} registered vehicles</span></span>
+        </button>
+
+        <article className="col-span-2 flex min-h-32 items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:col-span-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700"><Car size={23} /></span>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Registered vehicle</p>
+              {defaultVehicle ? (
+                <>
+                  <p className="mt-0.5 truncate font-mono text-sm font-extrabold text-slate-900">{defaultVehicle.plate}</p>
+                  <p className="truncate text-xs text-slate-500">{defaultVehicle.model || defaultVehicle.type}{defaultVehicle.color ? ` · ${defaultVehicle.color}` : ''}</p>
+                </>
+              ) : (
+                <p className="mt-1 text-xs text-amber-800">Add a vehicle before booking.</p>
+              )}
             </div>
-          ) : (
-            <div className="my-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">Add a registered vehicle before booking.</div>
-          )}
-          <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-xs">
-            <span className="truncate text-slate-500">{user.phone}</span>
-            <button type="button" onClick={() => navigate('/user/profile')} className="shrink-0 font-bold text-blue-700 hover:text-blue-900">Manage vehicle <ChevronRight size={13} className="inline" /></button>
           </div>
+          <button type="button" onClick={() => navigate('/user/profile')} className="shrink-0 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-50">
+            Manage <ChevronRight size={13} className="ml-1 inline" />
+          </button>
         </article>
       </section>
-
-      <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-blue-100 bg-blue-50/70 px-4 py-3 text-xs text-slate-700">
-        <div className="flex items-center gap-2">
-          <span className={`h-2.5 w-2.5 rounded-full ${socketConnected ? 'animate-pulse bg-emerald-500' : 'bg-amber-500'}`} />
-          <strong>{socketConnected ? 'Live updates connected' : 'Reconnecting to live updates'}</strong>
-          <span className="hidden text-slate-600 sm:inline">· Slot PN-A-001 is wired for the designated sensor demo.</span>
-        </div>
-        <span className="rounded-full bg-white px-2.5 py-1 font-semibold text-blue-700">Parking areas are demo data</span>
-      </section>
-
-      <LiveSensorDemoTrigger realSlot={realSlot} realSensor={realSensor} reservations={reservations} onTriggerComplete={onTriggerComplete} />
 
       <InteractiveMap
         parkingAreas={sortedAreas}
@@ -187,21 +208,6 @@ const UserHome = ({
         </section>
       )}
 
-      <section>
-        <div className="mb-3 flex items-end justify-between gap-2">
-          <div><h2 className="font-bold text-slate-900">Nearby mobility services</h2><p className="text-xs text-slate-500">Search Google Maps or open a quick guide.</p></div>
-          <button type="button" onClick={() => navigate('/user/services')} className="text-xs font-bold text-blue-700">View all</button>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {services.map(({ id, title, description, icon: Icon, color }) => (
-            <button key={id} type="button" onClick={() => navigate(`/user/services?tab=${id}`)} className="rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md">
-              <span className={`inline-flex rounded-xl p-2.5 ${color}`}><Icon size={20} /></span>
-              <h3 className="mt-3 text-sm font-bold text-slate-900">{title}</h3>
-              <p className="mt-1 text-xs leading-5 text-slate-500">{description}</p>
-            </button>
-          ))}
-        </div>
-      </section>
     </div>
   );
 };

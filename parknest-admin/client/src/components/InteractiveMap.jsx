@@ -27,8 +27,8 @@ const InteractiveMap = ({ parkingAreas = [], onSelectArea, userLocation, onLocat
         <div className="flex items-center gap-3">
           <span className="rounded-xl bg-blue-50 p-2 text-blue-700"><Navigation size={18} /></span>
           <div>
-            <h2 className="text-sm font-bold text-slate-900">Nearby parking & services</h2>
-            <p className="text-xs text-slate-500">Google Maps search based on your device location</p>
+            <h2 className="text-sm font-bold text-slate-900">Nearby services on Google Maps</h2>
+            <p className="text-xs text-slate-500">Explore parking, PUC, repair, and RTO services around you.</p>
           </div>
         </div>
         <div className="flex gap-1.5 overflow-x-auto">

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { AlertCircle, LoaderCircle, MapPin } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import { useUser } from '../context/UserContext';
@@ -11,6 +11,7 @@ import AuthModal from '../components/AuthModal';
 const UserLayout = () => {
   const { user } = useUser();
   const location = useLocation();
+  const navigate = useNavigate();
   const socket = useSocket();
   const { location: deviceLocation, status: locationStatus, error: locationError, locate } = useDeviceLocation();
   const [slots, setSlots] = useState([]);
@@ -97,6 +98,10 @@ const UserLayout = () => {
 
   const realSlot = slots.find((slot) => slot.slotId === 'PN-A-001');
   const realSensor = sensors.find((sensor) => sensor.sensorId === 'PN-SENSOR-001');
+  const finishSignIn = () => {
+    setAuthOpen(false);
+    navigate('/user', { replace: true });
+  };
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -149,7 +154,7 @@ const UserLayout = () => {
           }} />
         )}
       </main>
-      {authOpen && <AuthModal required onClose={() => setAuthOpen(false)} />}
+      {authOpen && <AuthModal required onClose={finishSignIn} />}
     </div>
   );
 };
