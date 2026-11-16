@@ -4,7 +4,7 @@ const getApiBaseUrl = () => {
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL;
   }
-  return 'http://localhost:5002/api';
+  return import.meta.env.DEV ? 'http://localhost:5002/api' : 'https://parknest-wt7j.onrender.com/api';
 };
 
 const API_BASE_URL = getApiBaseUrl();

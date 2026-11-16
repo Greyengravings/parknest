@@ -8,7 +8,7 @@ const getSocketUrl = () => {
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL.replace(/\/api\/?$/, '');
   }
-  return 'http://localhost:5002';
+  return import.meta.env.DEV ? 'http://localhost:5002' : 'https://parknest-wt7j.onrender.com';
 };
 
 export const useSocket = () => {
