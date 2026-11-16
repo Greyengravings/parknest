@@ -20,9 +20,9 @@ const seedData = async () => {
 
     // Create Areas
     const areas = await ParkingArea.insertMany([
-      { name: 'VESITs A1', location: 'Ground Floor', totalSlots: 10, description: 'Near Entry gate' },
-      { name: 'VESITs A2', location: 'Ground Floor', totalSlots: 10, description: 'Garden Entry' },
-      { name: 'VESITs A3', location: 'Ground Floor', totalSlots: 6, description: 'Behind Garden' }
+      { name: 'VESITs A1', location: 'Ground Floor', latitude: 19.045, longitude: 72.889, totalSlots: 10, description: 'Near Entry gate · Demo location' },
+      { name: 'VESITs A2', location: 'Ground Floor', latitude: 19.052, longitude: 72.898, totalSlots: 10, description: 'Garden Entry · Demo location' },
+      { name: 'VESITs A3', location: 'Ground Floor', latitude: 19.042, longitude: 72.883, totalSlots: 6, description: 'Behind Garden · Demo location' }
     ]);
 
     const areaA1 = areas[0];
@@ -38,7 +38,8 @@ const seedData = async () => {
       if (i % 12 === 0) status = 'MAINTENANCE';
 
       sensors.push({
-        sensorId: `SN-${String(i).padStart(3, '0')}`,
+        sensorId: i === 1 ? 'PN-SENSOR-001' : `SN-${String(i).padStart(3, '0')}`,
+        slotId: i === 1 ? 'PN-A-001' : `P-${String(i).padStart(3, '0')}`,
         status: status,
         lastSeen: new Date(),
         deviceType: 'NodeMCU/ESP8266',
@@ -59,7 +60,9 @@ const seedData = async () => {
       const sensor = savedSensors[i-1];
       let status = 'AVAILABLE';
 
-      if (sensor.status === 'OFFLINE') {
+      if (i === 1) {
+        status = 'AVAILABLE';
+      } else if (sensor.status === 'OFFLINE') {
         status = 'OFFLINE';
       } else if (sensor.status === 'MAINTENANCE') {
         status = 'MAINTENANCE';
@@ -70,7 +73,7 @@ const seedData = async () => {
       }
 
       slots.push({
-        slotId: `P-${String(i).padStart(3, '0')}`,
+        slotId: i === 1 ? 'PN-A-001' : `P-${String(i).padStart(3, '0')}`,
         areaId: areaId,
         status: status,
         sensorId: sensor.sensorId,
@@ -99,6 +102,10 @@ const seedData = async () => {
         reservationId: `RES-${1000 + i}`,
         slotId: reservedSlots[i].slotId,
         userId: users[i % users.length],
+        userName: users[i % users.length],
+        userPhone: `+91 90000 ${String(10000 + i)}`,
+        vehicleNumber: `MH-02-CB-${String(4321 + i).padStart(4, '0')}`,
+        vehicleType: 'Sedan',
         startTime: startTime,
         endTime: endTime,
         status: 'ACTIVE'
@@ -116,6 +123,10 @@ const seedData = async () => {
             reservationId: `RES-${2000 + i}`,
             slotId: savedSlots[i % savedSlots.length].slotId,
             userId: users[i % users.length],
+            userName: users[i % users.length],
+            userPhone: `+91 90000 ${String(20000 + i)}`,
+            vehicleNumber: `MH-02-AB-${String(1000 + i)}`,
+            vehicleType: 'Hatchback',
             startTime: startTime,
             endTime: endTime,
             status: 'COMPLETED'

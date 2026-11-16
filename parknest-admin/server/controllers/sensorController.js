@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Sensor = require('../models/Sensor');
 const ParkingSlot = require('../models/ParkingSlot');
 const Reservation = require('../models/Reservation');
+const { resolveSlotStatus } = require('../services/slotState');
 
 exports.getAllSensors = async (req, res) => {
   try {
@@ -51,9 +52,13 @@ exports.updateSensorData = async (req, res) => {
   const numDistance = typeof distance === 'number' ? distance : parseFloat(distance);
   const isDistanceValid = !isNaN(numDistance) && numDistance >= 0 && numDistance <= 400;
 
-  if (distance !== undefined && !isDistanceValid && occupied === undefined && state === undefined) {
+  if (distance !== undefined && !isDistanceValid) {
     console.warn(`[Sensor API] Received invalid distance reading (${distance}) from sensor ${sensorId}. Ignoring state change.`);
     return res.status(400).json({ message: 'Invalid sensor distance reading provided' });
+  }
+  if (occupied !== undefined && typeof occupied !== 'boolean' &&
+      !(typeof occupied === 'string' && ['true', 'false'].includes(occupied.toLowerCase()))) {
+    return res.status(400).json({ message: 'occupied must be a boolean value' });
   }
 
   // Determine if source is a physical hardware device or simulator
@@ -74,7 +79,8 @@ exports.updateSensorData = async (req, res) => {
         ipAddress: clientIp,
         firmwareVersion: firmwareVersion || '1.0.3',
         status: 'ONLINE',
-        lastSeen: now
+        lastSeen: now,
+        lastSource: isPhysicalSensor ? 'PHYSICAL SENSOR' : 'SIMULATOR'
       });
     } else {
       sensor.slotId = String(slotId).trim();
@@ -82,6 +88,7 @@ exports.updateSensorData = async (req, res) => {
       if (firmwareVersion) sensor.firmwareVersion = firmwareVersion;
       sensor.lastSeen = now;
       sensor.status = 'ONLINE';
+      sensor.lastSource = isPhysicalSensor ? 'PHYSICAL SENSOR' : 'SIMULATOR';
     }
     await sensor.save();
 
@@ -106,23 +113,18 @@ exports.updateSensorData = async (req, res) => {
       slot.distance = numDistance;
     }
 
-    // 3. Update status preserving maintenance & active reservations
+    // 3. Keep reservation and physical sensor state independent.
     if (slot.status !== 'MAINTENANCE') {
-      if (isVehiclePresent === true) {
-        slot.status = 'OCCUPIED';
-      } else if (isVehiclePresent === false) {
-        // Check if there is an active/pending reservation for this slot
-        const activeReservation = await Reservation.findOne({
-          slotId: slot.slotId,
-          status: { $in: ['ACTIVE', 'PENDING'] }
-        });
-
-        if (activeReservation) {
-          slot.status = 'RESERVED';
-        } else {
-          slot.status = 'AVAILABLE';
-        }
-      } else if (state && ['AVAILABLE', 'OCCUPIED', 'RESERVED', 'OFFLINE', 'MAINTENANCE'].includes(state)) {
+      const activeReservation = await Reservation.findOne({
+        slotId: slot.slotId,
+        status: { $in: ['ACTIVE', 'PENDING'] },
+        endTime: { $gt: now }
+      });
+      const currentStatus = slot.status === 'OFFLINE' ? 'AVAILABLE' : slot.status;
+      const sensorState = isVehiclePresent === true ? 'OCCUPIED' : isVehiclePresent === false ? 'EMPTY' : 'UNKNOWN';
+      slot.status = resolveSlotStatus(currentStatus, sensorState, Boolean(activeReservation));
+      if (!activeReservation && sensorState === 'UNKNOWN' && state &&
+          ['AVAILABLE', 'OCCUPIED', 'RESERVED', 'OFFLINE', 'MAINTENANCE'].includes(state)) {
         slot.status = state;
       }
     }

@@ -29,6 +29,21 @@ async function loadActiveSlots() {
   }
 }
 
+async function hasRecentPhysicalReading() {
+  try {
+    const response = await axios.get(`${BASE_URL}/api/sensors/PN-SENSOR-001`);
+    const sensor = response.data;
+    return sensor.status === 'ONLINE' &&
+      sensor.lastSource === 'PHYSICAL SENSOR' &&
+      Date.now() - new Date(sensor.lastSeen).getTime() < 30000;
+  } catch (error) {
+    if (error.response?.status !== 404) {
+      console.warn(`[Simulator] Could not verify the physical sensor state (${error.message}).`);
+    }
+    return false;
+  }
+}
+
 async function simulate() {
   console.log('Starting ParkNest IoT simulator...');
   console.log(`API endpoint: ${API_URL}`);
@@ -38,9 +53,14 @@ async function simulate() {
   setInterval(async () => {
     if (SLOTS.length === 0) return;
 
-    // Select a random slot
-    const index = Math.floor(Math.random() * SLOTS.length);
-    const selectedSlot = SLOTS[index];
+    const physicalSensorActive = await hasRecentPhysicalReading();
+    const simulationSlots = physicalSensorActive
+      ? SLOTS.filter(slot => slot.slotId !== 'PN-A-001')
+      : SLOTS;
+    if (simulationSlots.length === 0) return;
+
+    const index = Math.floor(Math.random() * simulationSlots.length);
+    const selectedSlot = simulationSlots[index];
 
     // Generate a realistic simulated distance measurement in cm (2 to 35 cm)
     const distance = Math.floor(Math.random() * 33) + 2;

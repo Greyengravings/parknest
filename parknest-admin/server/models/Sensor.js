@@ -10,6 +10,7 @@ const sensorSchema = new mongoose.Schema({
     default: 'OFFLINE'
   },
   lastSeen: { type: Date, default: Date.now },
+  lastSource: { type: String, enum: ['PHYSICAL SENSOR', 'SIMULATOR'] },
   ipAddress: { type: String },
   firmwareVersion: { type: String }
 }, { timestamps: true });

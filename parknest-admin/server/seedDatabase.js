@@ -27,6 +27,8 @@ async function seedDatabase() {
       area = await ParkingArea.create({
         name: "ParkNest Demo Parking",
         location: "Demo Location, Mumbai",
+        latitude: 19.045,
+        longitude: 72.889,
         totalSlots: 5,
         description: "Development dataset for ParkNest"
       });
@@ -34,6 +36,9 @@ async function seedDatabase() {
       console.log("Created sample parking area");
     } else {
       console.log("Sample parking area already exists");
+      area.latitude = 19.045;
+      area.longitude = 72.889;
+      await area.save();
     }
 
     // 2. Create sample sensors.
@@ -162,6 +167,10 @@ async function seedDatabase() {
         userId: "PN-DEMO-USER-001",
         startTime: new Date(Date.now() + 60 * 60 * 1000),
         endTime: new Date(Date.now() + 2 * 60 * 60 * 1000),
+        userName: "Demo Driver",
+        userPhone: "+91 98765 43210",
+        vehicleNumber: "MH-02-CB-4321",
+        vehicleType: "Sedan",
         status: "PENDING"
       });
 
