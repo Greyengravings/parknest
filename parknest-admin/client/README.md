@@ -1,16 +1,32 @@
-# React + Vite
+# ParkNest client MVP
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+The client contains both the admin console and the driver app:
 
-Currently, two official plugins are available:
+- Admin: `/#/` (dashboard), `/#/live-parking`, and `/#/reservations`
+- Driver: `/#/user`, with booking, reservations, profile, and nearby services routes
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Run locally
 
-## React Compiler
+Start the Express/MongoDB server first, then run:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+npm install
+npm run dev
+```
 
-## Expanding the Oxlint configuration
+The client uses `VITE_API_BASE_URL` and `VITE_SOCKET_URL` when set. In development it defaults to the backend at `http://localhost:5002`.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+## Driver demo
+
+- The first visit uses a local demo profile with sample vehicles. Sign out from the profile menu to try the phone sign-in screen.
+- Phone OTP is a client-only demo: enter any 10-digit number and use `1234`. No SMS is sent and no authentication service is configured.
+- The seed parking areas and sample service searches are demo data. Browser location permission is used for nearby sorting; the demo-area center is used when permission is unavailable.
+- Nearby Maps and service searches are Google Maps embeds/search links.
+- Slot `PN-A-001` is the designated physical-sensor slot. Its telemetry source is shown separately from its slot/reservation status. The three sensor buttons send simulated readings and are explicitly marked as simulation controls.
+
+## Reservation and sensor behavior
+
+- Active and pending bookings hold the slot as `RESERVED`, regardless of whether a sensor sees a car.
+- Sensor distance is displayed independently, so a car occupying a reserved space does not erase the reservation state.
+- Once a booking expires, an online sensor's latest reading determines `OCCUPIED` versus `AVAILABLE`. Offline and maintenance slots remain unavailable.
+- The reservation expiry monitor runs with the server's sensor monitor and emits slot/reservation Socket.IO updates.

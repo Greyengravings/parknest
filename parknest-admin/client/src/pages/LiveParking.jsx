@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { parkingService } from '../services/api';
+import { parkingService, reservationService } from '../services/api';
 import { useSocket } from '../hooks/useSocket';
 import {
   Wifi,
@@ -27,7 +27,7 @@ const StatusBadge = ({ status }) => {
   );
 };
 
-const SlotCard = ({ slot, onClick }) => {
+const SlotCard = ({ slot, reservation, onClick }) => {
   const isAvailable = slot.status === 'AVAILABLE';
   const isOccupied = slot.status === 'OCCUPIED';
   const isOffline = slot.status === 'OFFLINE';
@@ -92,6 +92,20 @@ const SlotCard = ({ slot, onClick }) => {
             <span className="text-gray-600">Reading: <strong className="text-gray-800">{slot.distance} cm</strong></span>
           </div>
         )}
+
+        <div className="rounded-lg border border-gray-200/70 bg-white/70 p-2 text-[11px]">
+          <div className="font-semibold text-gray-700">
+            Sensor: {isOffline ? 'OFFLINE' : slot.sensorId
+              ? Number(slot.distance) < Number(slot.threshold || 10) ? 'OCCUPIED' : 'EMPTY'
+              : 'NOT CONNECTED'}
+          </div>
+          <div className="mt-1 font-semibold text-gray-700">
+            Reservation: {reservation ? 'ACTIVE' : 'NONE'}
+          </div>
+          {reservation?.vehicleNumber && (
+            <div className="mt-1 break-all font-mono font-bold text-blue-800">Plate: {reservation.vehicleNumber}</div>
+          )}
+        </div>
 
         <div className="pt-2 border-t border-gray-200/60 flex justify-between items-center text-[10px] text-gray-500">
           <span>Updated {lastUpdatedText}</span>
@@ -162,7 +176,9 @@ const SlotDetailModal = ({ slot, onClose }) => {
 const LiveParking = () => {
   const [slots, setSlots] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [selectedSlot, setSelectedSlot] = useState(null);
+  const [reservations, setReservations] = useState([]);
   const socket = useSocket();
   const [isConnected, setIsConnected] = useState(() => Boolean(socket?.connected));
 
@@ -171,16 +187,27 @@ const LiveParking = () => {
     try {
       const response = await parkingService.getSlots();
       setSlots(response.data);
+      setLoadError('');
     } catch (err) {
-      console.error('Error fetching slots:', err);
+      setLoadError(err.response?.data?.message || 'Could not load live parking slots.');
     } finally {
       if (isInitial) setLoading(false);
     }
   }, []);
 
+  const fetchReservations = useCallback(async () => {
+    try {
+      const response = await reservationService.getReservations();
+      setReservations(response.data || []);
+    } catch (err) {
+      setLoadError(err.response?.data?.message || 'Could not load reservation details.');
+    }
+  }, []);
+
   useEffect(() => {
     fetchSlots(true);
-  }, [fetchSlots]);
+    fetchReservations();
+  }, [fetchSlots, fetchReservations]);
 
   useEffect(() => {
     if (!socket) return;
@@ -202,19 +229,26 @@ const LiveParking = () => {
       if (slot) handleSlotUpdate(slot);
       else fetchSlots(false);
     };
+    const handleReservationUpdate = () => fetchReservations();
 
     socket.on('connect', handleConnect);
     socket.on('disconnect', handleDisconnect);
     socket.on('slotUpdated', handleSlotUpdate);
     socket.on('parkingUpdated', handleParkingUpdate);
+    socket.on('reservationCreated', handleReservationUpdate);
+    socket.on('reservationCancelled', handleReservationUpdate);
+    socket.on('reservationExpired', handleReservationUpdate);
 
     return () => {
       socket.off('connect', handleConnect);
       socket.off('disconnect', handleDisconnect);
       socket.off('slotUpdated', handleSlotUpdate);
       socket.off('parkingUpdated', handleParkingUpdate);
+      socket.off('reservationCreated', handleReservationUpdate);
+      socket.off('reservationCancelled', handleReservationUpdate);
+      socket.off('reservationExpired', handleReservationUpdate);
     };
-  }, [socket, selectedSlot, fetchSlots]);
+  }, [socket, selectedSlot, fetchSlots, fetchReservations]);
 
   if (loading) return <div className="p-10 text-center font-medium text-gray-500">Loading live parking grid...</div>;
 
@@ -232,6 +266,8 @@ const LiveParking = () => {
           <h1 className="text-3xl font-bold text-gray-900">Live Parking Grid</h1>
           <p className="text-gray-500 mt-2">Real-time IoT slot occupancy visualization</p>
         </div>
+
+        {loadError && <div role="alert" className="flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"><span>{loadError}</span><button type="button" onClick={() => { fetchSlots(true); fetchReservations(); }} className="font-semibold underline">Retry</button></div>}
 
         <div className="flex flex-wrap items-center gap-4 bg-white p-3 rounded-2xl border border-gray-100 shadow-xs">
           <div className="flex items-center gap-2">
@@ -270,6 +306,11 @@ const LiveParking = () => {
                 <SlotCard
                   key={slot._id || slot.slotId}
                   slot={slot}
+                  reservation={reservations.find((reservation) =>
+                    reservation.slotId === slot.slotId &&
+                    ['ACTIVE', 'PENDING'].includes(reservation.status) &&
+                    new Date(reservation.endTime) > new Date()
+                  )}
                   onClick={setSelectedSlot}
                 />
               ))}

@@ -31,6 +31,7 @@ export const sensorService = {
   getSensors: () => api.get('/sensors'),
   getSensor: (id) => api.get(`/sensors/${id}`),
   getHealth: () => api.get('/sensors/health'),
+  updateSensorData: (data) => api.post('/sensors/update', data),
 };
 
 export const dashboardService = {
@@ -39,6 +40,8 @@ export const dashboardService = {
 
 export const reservationService = {
   getReservations: () => api.get('/reservations'),
+  createReservation: (data) => api.post('/reservations', data),
+  cancelReservation: (id) => api.post(`/reservations/${id}/cancel`),
 };
 
 export default api;

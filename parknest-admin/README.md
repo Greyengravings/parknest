@@ -6,7 +6,7 @@ Full-stack admin panel and real-time IoT parking slot occupancy management syste
 
 - `client/`: React + Vite frontend (Live Parking Grid, Sensor Management, Analytics, Dashboard)
 - `server/`: Node.js + Express + MongoDB backend (Socket.IO, Connectivity Monitor, REST APIs)
-- `firmware/`: ESP8266 Arduino C++ firmware (`esp8266_ir_sensor.ino`) for IR sensor hardware interfacing
+- `firmware/`: ESP8266 Arduino C++ firmware for IR and ultrasonic sensor hardware
 
 ## Setup & Running
 
@@ -52,7 +52,7 @@ Full-stack admin panel and real-time IoT parking slot occupancy management syste
    - `GND` -> `GND`
    - `OUT` -> `D1` (`GPIO 5`)
 2. Open `firmware/esp8266_ir_sensor.ino` in Arduino IDE.
-3. Update `WIFI_SSID`, `WIFI_PASS`, `SERVER_URL` (e.g., `http://192.168.1.100:5002/api/sensors/update`), `SENSOR_ID` (e.g. `SN-001`), and `SLOT_ID` (e.g. `P-001`).
+3. For the designated live demo slot, use `firmware/esp8266_ultrasonic_sensor.ino` and configure `WIFI_SSID`, `WIFI_PASS`, `SERVER_URL`, `SENSOR_ID=PN-SENSOR-001`, and `SLOT_ID=PN-A-001`.
 4. Upload to your ESP8266.
 
 ### 4. Hardware Simulation (Optional)
@@ -64,6 +64,10 @@ node simulator.js
 ```
 
 ## Features & Architecture
+
+- **Driver MVP**: Open `/#/user` for the responsive driver app, phone/OTP demo (code `1234`), local vehicle profile, Google Maps nearby searches, booking, and reservation details. OTP is client-only and does not send SMS.
+- **Clearly marked sample data**: `npm run seed` creates demo parking areas and slots; `PN-A-001` is the designated physical-sensor slot. Driver service searches are Google Maps results, not ParkNest-verified listings.
+- **Reservation/sensor states**: An active or pending reservation remains `RESERVED` while a car is detected. After expiry, an online sensor determines `OCCUPIED` or `AVAILABLE`; offline/maintenance slots remain unavailable. Sensor readings and reservation status are displayed separately.
 
 - **Real-Time IoT Synchronization**: ESP8266 posts readings to `/api/sensors/update`. Node.js updates MongoDB and broadcasts real-time Socket.IO events (`slotUpdated`, `sensorUpdated`, `parkingUpdated`) to web & Android app clients.
 - **Visual Status Indicators**:
