@@ -47,8 +47,10 @@
 const char* WIFI_SSID        = "YOUR_WIFI_SSID";
 const char* WIFI_PASS        = "YOUR_WIFI_PASSWORD";
 
-// Backend API URL (Use local IP address on local Wi-Fi network, e.g. http://192.168.1.100:5002/api/sensors/update)
-const char* SERVER_URL       = "http://192.168.1.100:5002/api/sensors/update";
+// Backend API URL:
+// For Live Cloud Backend on Render: "http://parknest-wt7j.onrender.com/api/sensors/update"
+// For Local Testing on Wi-Fi:       "http://192.168.1.X:5002/api/sensors/update"
+const char* SERVER_URL       = "http://parknest-wt7j.onrender.com/api/sensors/update";
 
 const char* SENSOR_ID        = "PN-SENSOR-001";
 const char* SLOT_ID          = "PN-A-001";
