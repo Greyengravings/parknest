@@ -1,119 +1,130 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { userService } from '../services/api';
 
 const UserContext = createContext();
 
-export const UserProvider = ({ children }) => {
-  // Load saved user state from localStorage or use defaults
-  const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('parknest_user');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        return {
-          ...parsed,
-          vehicles: Array.isArray(parsed.vehicles) ? parsed.vehicles : []
-        };
-      } catch {
-        return {
-          isLoggedIn: true,
-          phone: '+91 98765 43210',
-          name: 'ParkNest Driver',
-          email: '',
-          vehicles: []
-        };
-      }
-    }
-    return {
-      isLoggedIn: true,
-      phone: '+91 98765 43210',
-      name: 'Hitesh Nihalani',
-      email: 'hitesh@example.com',
-      vehicles: [
-        {
-          id: 'v-1',
-          plate: 'MH-02-CB-4321',
-          type: 'Sedan',
-          model: 'Honda City',
-          color: 'Pearl White',
-          isDefault: true
-        },
-        {
-          id: 'v-2',
-          plate: 'MH-04-EV-9876',
-          type: 'EV',
-          model: 'Tata Nexon EV',
-          color: 'Teal Blue',
-          isDefault: false
-        }
-      ]
-    };
-  });
+const emptyUser = {
+  id: '',
+  isLoggedIn: false,
+  phone: '',
+  name: '',
+  vehicles: []
+};
 
-  const [activeTab, setActiveTab] = useState('user'); // 'user' or 'admin'
+const phoneDigits = (phone) => {
+  const digits = String(phone ?? '').replace(/\D/g, '');
+  return digits.length === 12 && digits.startsWith('91') ? digits.slice(2) : digits;
+};
+
+const mapUser = (record) => {
+  const vehicles = Array.isArray(record.vehicles) ? record.vehicles.map((vehicle) => ({
+    id: vehicle.id || vehicle._id,
+    plate: vehicle.plate,
+    type: vehicle.type,
+    model: vehicle.model || '',
+    color: vehicle.color || '',
+    isDefault: Boolean(vehicle.isDefault)
+  })) : [];
+
+  if (vehicles.length && !vehicles.some((vehicle) => vehicle.isDefault)) {
+    vehicles[0].isDefault = true;
+  }
+
+  return {
+    id: record.id || record._id,
+    isLoggedIn: true,
+    phone: `+91 ${phoneDigits(record.phone)}`,
+    name: record.name || '',
+    vehicles
+  };
+};
+
+const getInitialUser = () => {
+  try {
+    const saved = JSON.parse(localStorage.getItem('parknest_user') || 'null');
+    if (/^[\da-f]{24}$/i.test(saved?.id || '') && saved.isLoggedIn) {
+      return { ...emptyUser, ...saved, vehicles: Array.isArray(saved.vehicles) ? saved.vehicles : [] };
+    }
+  } catch {
+    localStorage.removeItem('parknest_user');
+  }
+  return { ...emptyUser };
+};
+
+export const UserProvider = ({ children }) => {
+  const [user, setUser] = useState(getInitialUser);
+  const [activeTab, setActiveTab] = useState('user');
 
   useEffect(() => {
-    localStorage.setItem('parknest_user', JSON.stringify(user));
+    if (user.isLoggedIn && user.id) {
+      localStorage.setItem('parknest_user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('parknest_user');
+    }
   }, [user]);
 
-  const loginWithPhone = (phone) => {
-    setUser(prev => ({
-      ...prev,
-      isLoggedIn: true,
-      phone
-    }));
+  const loginWithPhone = async (phone) => {
+    const response = await userService.login(phoneDigits(phone));
+    const nextUser = mapUser(response.data.user);
+    setUser(nextUser);
+    return { ...nextUser, needsName: response.data.needsName };
   };
 
-  const logout = () => {
-    setUser(prev => ({
-      ...prev,
-      isLoggedIn: false
-    }));
+  const saveProfile = async (updates) => {
+    if (!user.isLoggedIn) {
+      throw new Error('Sign in before saving your profile.');
+    }
+    const response = await userService.updateProfile({
+      phone: phoneDigits(user.phone),
+      name: updates.name ?? user.name,
+      vehicles: updates.vehicles ?? user.vehicles
+    });
+    const nextUser = mapUser(response.data.user);
+    setUser(nextUser);
+    return nextUser;
   };
 
-  const addVehicle = (newVehicle) => {
-    const plate = newVehicle.plate.toUpperCase().trim();
-    if (!plate) return;
-    setUser(prev => {
-      if (prev.vehicles.some(vehicle => vehicle.plate === plate)) return prev;
-      const vehicleObj = {
-        id: 'v-' + Date.now(),
+  const addVehicle = async (newVehicle) => {
+    const plate = String(newVehicle.plate ?? '').trim().toUpperCase();
+    if (!plate) throw new Error('Enter the vehicle number plate.');
+    if (user.vehicles.some((vehicle) => vehicle.plate === plate)) {
+      throw new Error('That number plate is already registered.');
+    }
+
+    return saveProfile({
+      vehicles: [...user.vehicles, {
+        id: `v-${Date.now()}`,
         plate,
         type: newVehicle.type || 'Sedan',
-        model: newVehicle.model || 'My Car',
-        color: newVehicle.color || 'White',
-        isDefault: prev.vehicles.length === 0
-      };
-      return { ...prev, vehicles: [...prev.vehicles, vehicleObj] };
+        model: newVehicle.model || '',
+        color: newVehicle.color || '',
+        isDefault: user.vehicles.length === 0
+      }]
     });
   };
 
-  const setDefaultVehicle = (id) => {
-    setUser(prev => ({
-      ...prev,
-      vehicles: prev.vehicles.map(v => ({
-        ...v,
-        isDefault: v.id === id
-      }))
-    }));
-  };
-
-  const deleteVehicle = (id) => {
-    setUser(prev => {
-      const vehicles = prev.vehicles.filter(v => v.id !== id);
-      if (vehicles.length > 0 && !vehicles.some(v => v.isDefault)) {
-        vehicles[0].isDefault = true;
-      }
-      return { ...prev, vehicles };
+  const setDefaultVehicle = async (id) => {
+    if (!user.vehicles.some((vehicle) => vehicle.id === id)) {
+      throw new Error('The selected vehicle could not be found.');
+    }
+    return saveProfile({
+      vehicles: user.vehicles.map((vehicle) => ({ ...vehicle, isDefault: vehicle.id === id }))
     });
   };
 
-  const updateProfile = (profile) => {
-    setUser(prev => ({ ...prev, ...profile }));
+  const deleteVehicle = async (id) => {
+    const vehicles = user.vehicles.filter((vehicle) => vehicle.id !== id);
+    if (vehicles.length && !vehicles.some((vehicle) => vehicle.isDefault)) {
+      vehicles[0] = { ...vehicles[0], isDefault: true };
+    }
+    return saveProfile({ vehicles });
   };
 
-  const getDefaultVehicle = () => {
-    return user.vehicles.find(v => v.isDefault) || user.vehicles[0];
-  };
+  const updateProfile = (profile) => saveProfile(profile);
+
+  const logout = () => setUser({ ...emptyUser });
+
+  const getDefaultVehicle = () => user.vehicles.find((vehicle) => vehicle.isDefault) || user.vehicles[0];
 
   return (
     <UserContext.Provider value={{

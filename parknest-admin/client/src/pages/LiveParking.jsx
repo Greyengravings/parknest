@@ -11,6 +11,12 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
+const activeReservationForSlot = (reservations, slotId) => reservations.find((reservation) =>
+  reservation.slotId === slotId &&
+  ['ACTIVE', 'PENDING'].includes(reservation.status) &&
+  new Date(reservation.endTime) > new Date()
+);
+
 const StatusBadge = ({ status }) => {
   const styles = {
     AVAILABLE: 'bg-emerald-100 text-emerald-800 border-emerald-300 font-bold',
@@ -105,6 +111,12 @@ const SlotCard = ({ slot, reservation, onClick }) => {
           {reservation?.vehicleNumber && (
             <div className="mt-1 break-all font-mono font-bold text-blue-800">Plate: {reservation.vehicleNumber}</div>
           )}
+          {reservation && (
+            <div className="mt-2 border-t border-gray-200 pt-2 text-gray-700">
+              <div className="font-semibold">{reservation.userName || 'Name not provided'}</div>
+              <div>{reservation.userPhone || 'Phone not provided'}</div>
+            </div>
+          )}
         </div>
 
         <div className="pt-2 border-t border-gray-200/60 flex justify-between items-center text-[10px] text-gray-500">
@@ -115,7 +127,7 @@ const SlotCard = ({ slot, reservation, onClick }) => {
   );
 };
 
-const SlotDetailModal = ({ slot, onClose }) => {
+const SlotDetailModal = ({ slot, reservation, onClose }) => {
   if (!slot) return null;
 
   return (
@@ -159,6 +171,16 @@ const SlotDetailModal = ({ slot, onClose }) => {
                 {slot.lastUpdated ? new Date(slot.lastUpdated).toLocaleString() : 'N/A'}
               </span>
             </div>
+            {reservation && (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                <p className="mb-2 text-xs font-bold uppercase tracking-wider text-amber-900">Active reservation</p>
+                <dl className="space-y-2 text-sm">
+                  <div className="flex justify-between gap-3"><dt className="text-gray-600">Booked by</dt><dd className="text-right font-semibold text-gray-900">{reservation.userName || 'Name not provided'}</dd></div>
+                  <div className="flex justify-between gap-3"><dt className="text-gray-600">Phone</dt><dd className="text-right font-medium text-gray-900">{reservation.userPhone || 'Phone not provided'}</dd></div>
+                  <div className="flex justify-between gap-3"><dt className="text-gray-600">Registered plate</dt><dd className="text-right font-mono font-bold text-gray-900">{reservation.vehicleNumber || '—'}</dd></div>
+                </dl>
+              </div>
+            )}
           </div>
 
           <button
@@ -306,11 +328,7 @@ const LiveParking = () => {
                 <SlotCard
                   key={slot._id || slot.slotId}
                   slot={slot}
-                  reservation={reservations.find((reservation) =>
-                    reservation.slotId === slot.slotId &&
-                    ['ACTIVE', 'PENDING'].includes(reservation.status) &&
-                    new Date(reservation.endTime) > new Date()
-                  )}
+                  reservation={activeReservationForSlot(reservations, slot.slotId)}
                   onClick={setSelectedSlot}
                 />
               ))}
@@ -321,6 +339,7 @@ const LiveParking = () => {
 
       <SlotDetailModal
         slot={selectedSlot}
+        reservation={selectedSlot ? activeReservationForSlot(reservations, selectedSlot.slotId) : null}
         onClose={() => setSelectedSlot(null)}
       />
     </div>

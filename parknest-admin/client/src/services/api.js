@@ -44,4 +44,9 @@ export const reservationService = {
   cancelReservation: (id) => api.post(`/reservations/${id}/cancel`),
 };
 
+export const userService = {
+  login: (phone) => api.post('/users/login', { phone }),
+  updateProfile: (data) => api.put('/users/profile', data),
+};
+
 export default api;

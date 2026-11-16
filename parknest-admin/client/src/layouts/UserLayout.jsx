@@ -19,7 +19,7 @@ const UserLayout = () => {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [socketConnected, setSocketConnected] = useState(false);
-  const [authOpen, setAuthOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(() => !user.isLoggedIn);
 
   const refreshParkingData = useCallback(async () => {
     setLoadError('');
@@ -40,9 +40,18 @@ const UserLayout = () => {
   }, []);
 
   useEffect(() => {
+    if (!user.isLoggedIn) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     refreshParkingData();
     locate();
-  }, [refreshParkingData, locate]);
+  }, [user.isLoggedIn, refreshParkingData, locate]);
+
+  useEffect(() => {
+    if (!user.isLoggedIn) setAuthOpen(true);
+  }, [user.isLoggedIn]);
 
   useEffect(() => {
     if (!socket) return undefined;
@@ -93,7 +102,7 @@ const UserLayout = () => {
     <div className="min-h-screen bg-slate-50">
       <Navbar socketConnected={socketConnected} realSensor={realSensor} onSignIn={() => setAuthOpen(true)} />
       <main className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 sm:py-8">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600 shadow-sm">
+        {user.isLoggedIn && <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600 shadow-sm">
           <div className="flex items-center gap-2">
             {locationStatus === 'loading' ? <LoaderCircle size={14} className="animate-spin text-blue-600" /> : <MapPin size={14} className="text-blue-600" />}
             <span>
@@ -109,22 +118,16 @@ const UserLayout = () => {
               Try location again
             </button>
           )}
-        </div>
+        </div>}
 
-        {loadError && (
+        {user.isLoggedIn && loadError && (
           <div role="alert" className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
             <span className="flex items-center gap-2"><AlertCircle size={17} />{loadError}</span>
             <button type="button" onClick={refreshParkingData} className="font-semibold underline">Retry</button>
           </div>
         )}
 
-        {!user.isLoggedIn ? (
-          <section className="mx-auto max-w-xl rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm sm:p-12">
-            <h1 className="text-2xl font-bold text-slate-900">Sign in to use ParkNest</h1>
-            <p className="mt-2 text-sm text-slate-600">Use your phone number and the demo one-time code to manage vehicles and reservations.</p>
-            <button type="button" onClick={() => setAuthOpen(true)} className="mt-5 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white hover:bg-blue-700">Sign in with phone</button>
-          </section>
-        ) : loading ? (
+        {!user.isLoggedIn ? null : loading ? (
           <div className="rounded-2xl border border-slate-200 bg-white py-16 text-center text-sm text-slate-500">
             <LoaderCircle size={22} className="mx-auto mb-2 animate-spin text-blue-600" />
             Loading parking availability…
@@ -146,7 +149,7 @@ const UserLayout = () => {
           }} />
         )}
       </main>
-      {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}
+      {authOpen && <AuthModal required onClose={() => setAuthOpen(false)} />}
     </div>
   );
 };

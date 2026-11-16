@@ -8,15 +8,26 @@ const Profile = () => {
   const [profileSaved, setProfileSaved] = useState(false);
   const [vehicle, setVehicle] = useState({ plate: '', type: 'Sedan', model: '', color: '' });
   const [error, setError] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [savingVehicle, setSavingVehicle] = useState(false);
+  const [vehicleActionId, setVehicleActionId] = useState('');
 
-  const saveProfile = (event) => {
+  const saveProfile = async (event) => {
     event.preventDefault();
-    updateProfile({ name: name.trim() || user.name });
-    setProfileSaved(true);
-    window.setTimeout(() => setProfileSaved(false), 2500);
+    setSavingProfile(true);
+    setError('');
+    try {
+      await updateProfile({ name: name.trim() || user.name });
+      setProfileSaved(true);
+      window.setTimeout(() => setProfileSaved(false), 2500);
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || requestError.message || 'Could not save your profile.');
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
-  const submitVehicle = (event) => {
+  const submitVehicle = async (event) => {
     event.preventDefault();
     const plate = vehicle.plate.trim().toUpperCase();
     if (!plate) {
@@ -27,9 +38,28 @@ const Profile = () => {
       setError('That number plate is already registered.');
       return;
     }
-    addVehicle({ ...vehicle, plate });
-    setVehicle({ plate: '', type: 'Sedan', model: '', color: '' });
     setError('');
+    setSavingVehicle(true);
+    try {
+      await addVehicle({ ...vehicle, plate });
+      setVehicle({ plate: '', type: 'Sedan', model: '', color: '' });
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || requestError.message || 'Could not add this vehicle.');
+    } finally {
+      setSavingVehicle(false);
+    }
+  };
+
+  const updateVehicle = async (action, id) => {
+    setError('');
+    setVehicleActionId(id);
+    try {
+      await action(id);
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || requestError.message || 'Could not update this vehicle.');
+    } finally {
+      setVehicleActionId('');
+    }
   };
 
   return (
@@ -39,6 +69,8 @@ const Profile = () => {
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">Profile & vehicles</h1>
         <p className="mt-1 text-sm text-slate-500">Manage the details used for your parking reservations.</p>
       </header>
+
+      {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
 
       <form onSubmit={saveProfile} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <h2 className="mb-4 flex items-center gap-2 font-bold text-slate-900"><UserRound size={18} className="text-blue-600" /> Contact details</h2>
@@ -53,7 +85,7 @@ const Profile = () => {
           </label>
         </div>
         <div className="mt-4 flex items-center gap-3">
-          <button type="submit" className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700">Save profile</button>
+          <button type="submit" disabled={savingProfile} className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-60">{savingProfile ? 'Saving…' : 'Save profile'}</button>
           {profileSaved && <span role="status" className="flex items-center gap-1 text-sm font-medium text-emerald-700"><Check size={15} /> Saved</span>}
         </div>
       </form>
@@ -81,12 +113,12 @@ const Profile = () => {
                     </div>
                     <p className="mt-1 text-sm text-slate-600">{registered.type} · {registered.model || 'Model not set'}{registered.color ? ` · ${registered.color}` : ''}</p>
                   </div>
-                  <button type="button" aria-label={`Remove ${registered.plate}`} onClick={() => deleteVehicle(registered.id)} className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600">
+                  <button type="button" disabled={Boolean(vehicleActionId)} aria-label={`Remove ${registered.plate}`} onClick={() => updateVehicle(deleteVehicle, registered.id)} className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50">
                     <Trash2 size={16} />
                   </button>
                 </div>
                 {!registered.isDefault && (
-                  <button type="button" onClick={() => setDefaultVehicle(registered.id)} className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-blue-700 hover:text-blue-900">
+                  <button type="button" disabled={Boolean(vehicleActionId)} onClick={() => updateVehicle(setDefaultVehicle, registered.id)} className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-blue-700 hover:text-blue-900 disabled:opacity-50">
                     <Star size={14} /> Make default
                   </button>
                 )}
@@ -117,9 +149,8 @@ const Profile = () => {
               <input value={vehicle.color} onChange={(event) => setVehicle({ ...vehicle, color: event.target.value })} placeholder="e.g. White" className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500" />
             </label>
           </div>
-          {error && <p role="alert" className="mt-2 text-xs font-medium text-red-700">{error}</p>}
-          <button type="submit" className="mt-3 flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700">
-            <Plus size={16} /> Add vehicle
+          <button type="submit" disabled={savingVehicle} className="mt-3 flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-60">
+            <Plus size={16} /> {savingVehicle ? 'Adding…' : 'Add vehicle'}
           </button>
         </form>
       </section>

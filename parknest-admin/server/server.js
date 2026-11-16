@@ -73,6 +73,7 @@ app.use('/api/parking', require('./routes/parkingRoutes'));
 app.use('/api/sensors', require('./routes/sensorRoutes'));
 app.use('/api/dashboard', require('./routes/dashboardRoutes'));
 app.use('/api/reservations', require('./routes/reservationRoutes'));
+app.use('/api/users', require('./routes/userRoutes'));
 
 // Start sensor monitor
 const sensorMonitor = require('./services/sensorMonitor');

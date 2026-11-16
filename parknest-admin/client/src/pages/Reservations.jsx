@@ -111,8 +111,9 @@ const Reservations = () => {
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-2 text-sm text-gray-700">
                     <User size={14} className="text-gray-400" />
-                    {res.userId}
+                    <span className="font-semibold">{res.userName || 'Name not provided'}</span>
                   </div>
+                  <div className="pl-6 text-xs text-gray-500">{res.userPhone || 'Phone not provided'}</div>
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-2 text-sm text-gray-700">

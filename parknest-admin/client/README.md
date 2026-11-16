@@ -18,11 +18,15 @@ The client uses `VITE_API_BASE_URL` and `VITE_SOCKET_URL` when set. In developme
 
 ## Driver demo
 
-- The first visit uses a local demo profile with sample vehicles. Sign out from the profile menu to try the phone sign-in screen.
-- Phone OTP is a client-only demo: enter any 10-digit number and use `1234`. No SMS is sent and no authentication service is configured.
+- The driver panel starts with a required phone sign-in. Enter a 10-digit number and use demo OTP `1234`; no SMS is sent and this is not production authentication.
+- A successful demo sign-in creates or loads the user in MongoDB through the backend. First-time users provide a name, and profile and registered-vehicle changes are saved to MongoDB.
+- Add a registered vehicle before booking. Reservations are tied to the user's phone and a vehicle plate from that profile; the admin reservation list and live slot card show the booker's name, phone, and plate.
+- The browser keeps a local session/profile cache so a signed-in user stays signed in on refresh. Signing out clears that local cache.
 - The seed parking areas and sample service searches are demo data. Browser location permission is used for nearby sorting; the demo-area center is used when permission is unavailable.
 - Nearby Maps and service searches are Google Maps embeds/search links.
 - Slot `PN-A-001` is the designated physical-sensor slot. Its telemetry source is shown separately from its slot/reservation status. The three sensor buttons send simulated readings and are explicitly marked as simulation controls.
+
+The backend must have `MONGO_URI` configured for MongoDB-backed profiles and reservations. The demo OTP is checked in the client only and must not be used as an authentication mechanism for a production service.
 
 ## Reservation and sensor behavior
 

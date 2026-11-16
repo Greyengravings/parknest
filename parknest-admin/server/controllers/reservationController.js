@@ -1,7 +1,9 @@
 const mongoose = require('mongoose');
 const Reservation = require('../models/Reservation');
 const ParkingSlot = require('../models/ParkingSlot');
+const User = require('../models/User');
 const { getSensorState, resolveSlotStatus } = require('../services/slotState');
+const { formatPhone, normalizePhone } = require('../services/userProfile');
 
 exports.getAllReservations = async (req, res) => {
   try {
@@ -14,11 +16,22 @@ exports.getAllReservations = async (req, res) => {
 
 exports.createReservation = async (req, res) => {
   try {
-    const { slotId, userId, userName, userPhone, vehicleNumber, vehicleType, durationHours = 2 } = req.body;
+    const { slotId, userPhone, vehicleNumber, durationHours = 2 } = req.body;
 
     const duration = Number(durationHours);
-    if (!slotId || !vehicleNumber || !Number.isFinite(duration) || duration <= 0 || duration > 24) {
-      return res.status(400).json({ message: 'slotId, vehicleNumber, and a duration greater than 0 and no more than 24 hours are required' });
+    const phone = normalizePhone(userPhone);
+    const plate = String(vehicleNumber ?? '').trim().toUpperCase();
+    if (!slotId || !/^\d{10}$/.test(phone) || !plate || !Number.isFinite(duration) || duration <= 0 || duration > 24) {
+      return res.status(400).json({ message: 'A valid phone number, registered number plate, slot, and duration are required.' });
+    }
+
+    const user = await User.findOne({ phone });
+    if (!user) {
+      return res.status(404).json({ message: 'Sign in and register your profile before booking.' });
+    }
+    const registeredVehicle = user.vehicles.find((vehicle) => vehicle.plate === plate);
+    if (!registeredVehicle) {
+      return res.status(400).json({ message: 'Select a vehicle registered to your account.' });
     }
 
     const slot = await ParkingSlot.findOne({ slotId });
@@ -56,11 +69,11 @@ exports.createReservation = async (req, res) => {
     const reservation = new Reservation({
       reservationId,
       slotId,
-      userId: userId || 'USER-' + Date.now().toString().slice(-4),
-      userName: userName || 'John Doe',
-      userPhone: userPhone || '+91 9876543210',
-      vehicleNumber: vehicleNumber.toUpperCase().trim(),
-      vehicleType: vehicleType || 'Sedan',
+      userId: user._id.toString(),
+      userName: user.name,
+      userPhone: formatPhone(user.phone),
+      vehicleNumber: registeredVehicle.plate,
+      vehicleType: registeredVehicle.type,
       startTime,
       endTime,
       status: 'ACTIVE'
